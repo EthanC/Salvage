@@ -107,9 +107,9 @@ class Salvage:
 
         embed.set_color("0BA5EC")
         embed.set_author(
-            "Portainer",
-            url=f"https://www.portainer.io/",
-            icon_url="https://i.imgur.com/6MtNjWh.png",
+            "Salvage",
+            url=f"https://github.com/EthanC/Salvage",
+            icon_url="https://i.imgur.com/YPGC3In.png",
         )
         embed.add_embed_field("Stack", f"[{name}]({gitUrl})")
 
@@ -122,7 +122,7 @@ class Salvage:
                 "Created", f"{Format.Relative(self, created)} by {createdBy}"
             )
 
-        embed.set_footer(text="Salvage", icon_url="https://i.imgur.com/1Ugi4T5.png")
+        embed.set_footer(text="Portainer", icon_url="https://i.imgur.com/6MtNjWh.png")
         embed.set_timestamp(datetime.now().timestamp())
 
         DiscordWebhook(url, embeds=[embed], rate_limit_retry=True).execute()
