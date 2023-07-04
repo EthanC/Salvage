@@ -16,15 +16,16 @@ Regardless of your chosen setup method, Salvage is intended for use with a task 
 
 **Environment Variables:**
 
+-   `LOG_LEVEL`: [Loguru](https://loguru.readthedocs.io/en/stable/api/logger.html) severity level to write to the console.
+-   `LOG_DISCORD_WEBHOOK_URL`: [Discord Webhook](https://support.discord.com/hc/en-us/articles/228383668-Intro-to-Webhooks) URL to receive log events.
+-   `LOG_DISCORD_WEBHOOK_LEVEL`: Minimum [Loguru](https://loguru.readthedocs.io/en/stable/api/logger.html) severity level to forward to Discord.
 -   `PORTAINER_ADDRESS` (Required): IP or URL for the local Portainer instance.
 -   `PORTAINER_PORT` (Required): Port number for the local Portainer instance.
 -   `PORTAINER_USERNAME` (Required): Username for the local Portainer instance.
 -   `PORTAINER_PASSWORD` (Required): Password for the local Portainer instance.
 -   `GITHUB_ACCESS_TOKEN` (Required): [Personal Access Token (Classic)](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#personal-access-tokens-classic) for GitHub.
 -   `GITHUB_REPOSITORY` (Required): Name of the private GitHub repository to store backups.
--   `DISCORD_NOTIFY_WEBHOOK`: [Discord Webhook](https://support.discord.com/hc/en-us/articles/228383668-Intro-to-Webhooks) URL to receive available username notifications.
--   `DISCORD_LOG_WEBHOOK`: [Discord Webhook](https://support.discord.com/hc/en-us/articles/228383668-Intro-to-Webhooks) URL to receive log events.
--   `DISCORD_LOG_LEVEL`: Minimum [Loguru](https://loguru.readthedocs.io/en/stable/api/logger.html) severity level to forward to Discord.
+-   `DISCORD_WEBHOOK_URL`: [Discord Webhook](https://support.discord.com/hc/en-us/articles/228383668-Intro-to-Webhooks) URL to receive Portainer Stack notifications.
 
 ### Docker (Recommended)
 
@@ -37,15 +38,16 @@ services:
     container_name: salvage
     image: ethanchrisp/salvage:latest
     environment:
+      LOG_LEVEL: INFO
+      LOG_DISCORD_WEBHOOK_URL: https://discord.com/api/webhooks/YYYYYYYY/YYYYYYYY
+      LOG_DISCORD_WEBHOOK_LEVEL: WARNING
       PORTAINER_ADDRESS: XXXXXXXX
       PORTAINER_PORT: 1234
       PORTAINER_USERNAME: XXXXXXXX
       PORTAINER_PASSWORD: XXXXXXXX
       GITHUB_ACCESS_TOKEN: XXXXXXXX
       GITHUB_REPOSITORY: XXXXXXXX
-      DISCORD_NOTIFY_WEBHOOK: https://discord.com/api/webhooks/XXXXXXXX/XXXXXXXX
-      DISCORD_LOG_WEBHOOK: https://discord.com/api/webhooks/XXXXXXXX/XXXXXXXX
-      DISCORD_LOG_LEVEL: WARNING
+      DISCORD_WEBHOOK_URL: https://discord.com/api/webhooks/XXXXXXXX/XXXXXXXX
 ```
 
 ### Standalone

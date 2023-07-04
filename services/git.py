@@ -32,7 +32,7 @@ class Git:
         try:
             logger.trace(self.git.get_rate_limit())
         except Exception as e:
-            logger.critical(f"Failed to authenticate with GitHub, {e}")
+            logger.opt(exception=e).critical("Failed to authenticate with GitHub")
 
             exit(1)
 
@@ -57,8 +57,8 @@ class Git:
         try:
             self.gitRepo: Repository = self.gitUser.get_repo(name)
         except Exception as e:
-            logger.critical(
-                f"Failed to fetch GitHub repository {self.gitName}/{name}, {e}"
+            logger.opt(exception=e).critical(
+                f"Failed to fetch GitHub repository {self.gitName}/{name}"
             )
 
             exit(1)
@@ -91,7 +91,7 @@ class Git:
         except Exception as e:
             # Repository is likely empty but we do not have an Exception
             # specific to this error, so continue on; quietly.
-            logger.debug(f"Failed to fetch files in GitHub repository, {e}")
+            logger.opt(exception=e).debug("Failed to fetch files in GitHub repository")
 
             return
 
@@ -123,7 +123,9 @@ class Git:
             else:
                 self.gitRepo.create_file(filename, f"Create {filename}", content)
         except Exception as e:
-            logger.error(f"Failed to save file {filename} to GitHub repository, {e}")
+            logger.opt(exception=e).error(
+                f"Failed to save file {filename} to GitHub repository"
+            )
 
             return
 

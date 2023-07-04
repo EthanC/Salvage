@@ -1,13 +1,13 @@
 import logging
 from datetime import datetime
 from os import environ
-from sys import exit
+from sys import exit, stdout
 from typing import Any, Dict, List, Self
 
 import dotenv
 from discord_webhook import DiscordEmbed, DiscordWebhook
 from loguru import logger
-from notifiers.logging import NotificationHandler
+from loguru_discord import DiscordSink
 
 from handlers import Format, Intercept
 from services import Git, Portainer
@@ -26,29 +26,28 @@ class Salvage:
         logger.info("Salvage")
         logger.info("https://github.com/EthanC/Salvage")
 
+        # Reroute standard logging to Loguru
+        logging.basicConfig(handlers=[Intercept()], level=0, force=True)
+
         if dotenv.load_dotenv():
             logger.success("Loaded environment variables")
             logger.trace(environ)
 
-        # Reroute standard logging to Loguru
-        logging.basicConfig(handlers=[Intercept()], level=0, force=True)
+        if level := environ.get("LOG_LEVEL"):
+            logger.remove()
+            logger.add(stdout, level=level)
 
-        if logUrl := environ.get("DISCORD_LOG_WEBHOOK"):
-            if not (logLevel := environ.get("DISCORD_LOG_LEVEL")):
-                logger.critical("Level for Discord webhook logging is not set")
+            logger.success(f"Set console logging level to {level}")
 
-                return
-
+        if url := environ.get("LOG_DISCORD_WEBHOOK_URL"):
             logger.add(
-                NotificationHandler(
-                    "slack", defaults={"webhook_url": f"{logUrl}/slack"}
-                ),
-                level=logLevel,
-                format="```\n{time:YYYY-MM-DD HH:mm:ss.SSS} | {level:<8} | {name}:{function}:{line} - {message}\n```",
+                DiscordSink(url),
+                level=environ.get("LOG_DISCORD_WEBHOOK_LEVEL"),
+                backtrace=False,
             )
 
             logger.success(f"Enabled logging to Discord webhook")
-            logger.trace(logUrl)
+            logger.trace(url)
 
         Portainer.Authenticate(self)
 
@@ -91,7 +90,7 @@ class Salvage:
     def Notify(self: Self, stack: Dict[str, Any]) -> None:
         """Report Portainer Stack updates to the configured Discord webhook."""
 
-        if not (url := environ.get("DISCORD_NOTIFY_WEBHOOK")):
+        if not (url := environ.get("DISCORD_WEBHOOK_URL")):
             logger.info("Discord webhook for notifications is not configured")
 
             return

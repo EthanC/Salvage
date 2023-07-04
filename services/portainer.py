@@ -41,12 +41,7 @@ class Portainer:
             if not (jwt := res.json().get("jwt")):
                 raise ValueError("JWT token not found in response")
         except Exception as e:
-            reason: str = str(e)
-
-            if res.text:
-                reason += f" ({res.text})"
-
-            logger.critical(f"Failed to authenticate with Portainer, {reason}")
+            logger.opt(exception=e).critical("Failed to authenticate with Portainer")
 
             exit(1)
 
@@ -76,12 +71,7 @@ class Portainer:
             if not isinstance(res.json(), list):
                 raise ValueError("response is not an array")
         except Exception as e:
-            reason: str = str(e)
-
-            if res:
-                reason += f" ({res.text})"
-
-            logger.error(f"Failed to fetch Stacks from Portainer, {reason}")
+            logger.opt(exception=e).error("Failed to fetch Stacks from Portainer")
 
             return stacks
 
@@ -138,12 +128,9 @@ class Portainer:
             if not (content := res.json().get("StackFileContent")):
                 raise ValueError("Stack file content is null")
         except Exception as e:
-            reason: str = str(e)
-
-            if res.text:
-                reason += f" ({res.text})"
-
-            logger.error(f"Failed to fetch {name} Stack from Portainer, {reason}")
+            logger.opt(exception=e).error(
+                f"Failed to fetch {name} Stack from Portainer"
+            )
 
             return
 
