@@ -2,7 +2,7 @@ import logging
 from datetime import datetime
 from os import environ
 from sys import exit, stdout
-from typing import Any, Dict, List, Self
+from typing import Any, Self
 
 import dotenv
 from discord_webhook import DiscordEmbed, DiscordWebhook
@@ -51,7 +51,7 @@ class Salvage:
 
         Portainer.Authenticate(self)
 
-        stacks: List[Dict[str, Any]] = Portainer.ListStacks(self)
+        stacks: list[dict[str, Any]] = Portainer.ListStacks(self)
 
         Git.Authenticate(self)
         Git.LoadRepository(self)
@@ -87,7 +87,7 @@ class Salvage:
 
         logger.success(f"Finished processing {len(stacks):,} Portainer Stacks")
 
-    def Notify(self: Self, stack: Dict[str, Any]) -> None:
+    def Notify(self: Self, stack: dict[str, Any]) -> None:
         """Report Portainer Stack updates to the configured Discord webhook."""
 
         if not (url := environ.get("DISCORD_WEBHOOK_URL")):

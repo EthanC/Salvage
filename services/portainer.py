@@ -1,7 +1,7 @@
 from datetime import datetime
 from os import environ
 from sys import exit
-from typing import Any, Dict, List, Optional, Self
+from typing import Any, Self
 
 import httpx
 from httpx import Response
@@ -17,7 +17,7 @@ class Portainer:
         retrieve a JWT token for further API requests.
         """
 
-        address: Optional[str] = environ.get("PORTAINER_ADDRESS")
+        address: str | None = environ.get("PORTAINER_ADDRESS")
         port: str = environ.get("PORTAINER_PORT")
 
         self.pAddress: str = f"https://{address}:{port}"
@@ -50,10 +50,10 @@ class Portainer:
         logger.success("Authenticated with Portainer")
         logger.trace(self.pJWT)
 
-    def ListStacks(self: Self) -> List[Dict[str, Any]]:
+    def ListStacks(self: Self) -> list[dict[str, Any]]:
         """Returns an array of Stacks from the configured Portainer instance."""
 
-        stacks: List[Dict[str, Any]] = []
+        stacks: list[dict[str, Any]] = []
 
         try:
             res: Response = httpx.get(
@@ -110,7 +110,7 @@ class Portainer:
         Portainer Stack.
         """
 
-        content: Optional[str] = None
+        content: str | None = None
 
         try:
             res: Response = httpx.get(

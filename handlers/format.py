@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from typing import Optional, Self
+from typing import Self
 
 from loguru import logger
 
@@ -25,8 +25,8 @@ class Format:
     def GitURL(
         self: Self,
         username: str,
-        repository: Optional[str] = None,
-        path: Optional[str] = None,
+        repository: str | None = None,
+        path: str | None = None,
     ) -> str:
         """
         Return a URL to the provided GitHub resource.

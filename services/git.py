@@ -1,7 +1,7 @@
 import base64
 from os import environ
 from sys import exit
-from typing import List, Optional, Self, Tuple
+from typing import Self, Tuple
 
 from github import Github
 from github.ContentFile import ContentFile
@@ -76,7 +76,7 @@ class Git:
         logger.info(f"Loaded GitHub repository {self.gitName}/{name}")
         logger.debug(Format.GitURL(self, self.gitName, name))
 
-    def GetFile(self: Self, filename: str) -> Tuple[Optional[str], Optional[str]]:
+    def GetFile(self: Self, filename: str) -> Tuple[str | None, str | None]:
         """
         Fetch the specified file from the configured GitHub repository
         and return both its contents and blob SHA hash as a Tuple.
@@ -85,7 +85,7 @@ class Git:
         """
 
         try:
-            files: List[ContentFile] = self.gitRepo.get_contents("/")
+            files: list[ContentFile] = self.gitRepo.get_contents("/")
 
             logger.trace(files)
         except Exception as e:
@@ -110,7 +110,7 @@ class Git:
             return content, file.sha
 
     def SaveFile(
-        self: Self, filename: str, content: str, exists: bool, sha: Optional[str] = None
+        self: Self, filename: str, content: str, exists: bool, sha: str | None = None
     ) -> None:
         """
         Update the specified file in the configured GitHub repository

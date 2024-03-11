@@ -32,7 +32,6 @@ Regardless of your chosen setup method, Salvage is intended for use with a task 
 Modify the following `docker-compose.yml` example file, then run `docker compose up`.
 
 ```yml
-version: "3"
 services:
   salvage:
     container_name: salvage
@@ -52,8 +51,8 @@ services:
 
 ### Standalone
 
-Salvage is built for [Python 3.11](https://www.python.org/) or greater.
+Salvage is built for [Python 3.12](https://www.python.org/) or greater.
 
-1. Install required dependencies using [Poetry](https://python-poetry.org/): `poetry install`
+1. Install required dependencies using [Poetry](https://python-poetry.org/): `poetry install --no-root`
 2. Rename `.env.example` to `.env`, then provide the environment variables.
 3. Start Salvage: `python salvage.py`
