@@ -40,7 +40,7 @@ services:
       GITHUB_REPOSITORY: XXXXXXXX
       DISCORD_WEBHOOK_URL: https://discord.com/api/webhooks/XXXXXXXX/XXXXXXXX
     volumes:
-      /home/username/stacks:/salvage/stacks:ro
+      - /home/username/stacks:/salvage/stacks:ro
 ```
 
 ### Standalone
