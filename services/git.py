@@ -1,132 +1,176 @@
-import base64
-from os import environ
-from sys import exit
-from typing import Self, Tuple
-
 from github import Github
+from github.AuthenticatedUser import AuthenticatedUser
+from github.Commit import Commit
 from github.ContentFile import ContentFile
+from github.GithubObject import _NotSetType  # pyright: ignore [reportPrivateUsage]
 from github.NamedUser import NamedUser
 from github.Repository import Repository
 from loguru import logger
 
-from handlers import Format
 
+def Authenticate(token: str) -> AuthenticatedUser | None:
+    """
+    Authenticate with GitHub using the configured credentials and return
+    the user object.
+    """
 
-class Git:
-    """Class to integrate with the GitHub API."""
+    try:
+        git: Github = Github(token)
+        user: NamedUser | AuthenticatedUser = git.get_user()
 
-    def Authenticate(self: Self) -> None:
-        """Authenticate with GitHub using the configured credentials."""
+        logger.trace(git.get_rate_limit())
 
-        token: str = environ.get("GITHUB_ACCESS_TOKEN")
-
-        if not token:
-            logger.critical(
-                "Cannot authenticate with GitHub, access token is not configured"
+        if isinstance(user, NamedUser):
+            raise RuntimeError(
+                "Expected AuthenticatedUser object, received NamedUser object"
             )
+    except Exception as e:
+        logger.opt(exception=e).error("Failed to authenticate with GitHub")
 
-            exit(1)
+        return
 
-        self.git: Github = Github(token)
+    logger.debug(f"Authenticated with GitHub as {user.login}")
 
-        try:
-            logger.trace(self.git.get_rate_limit())
-        except Exception as e:
-            logger.opt(exception=e).critical("Failed to authenticate with GitHub")
+    return user
 
-            exit(1)
 
-        self.gitUser: NamedUser = self.git.get_user()
-        self.gitName: str = self.gitUser.login
+def GetRepository(name: str, user: AuthenticatedUser) -> Repository | None:
+    """Fetch the configured GitHub repository for the authenticated user."""
 
-        logger.success(f"Authenticated with GitHub as {self.gitName}")
-        logger.debug(Format.GitURL(self, self.gitName))
+    repo: Repository | None = None
 
-    def LoadRepository(self: Self) -> None:
-        """Fetch the configured GitHub repository for the authenticated user."""
+    try:
+        repo = user.get_repo(name)
+    except Exception as e:
+        logger.opt(exception=e).error(
+            f"Failed to get GitHub repository {user.login}/{name}"
+        )
 
-        name: str = environ.get("GITHUB_REPOSITORY")
+        return
 
-        if not name:
-            logger.critical(
-                "Cannot fetch GitHub repository, repository name is not configured"
-            )
+    if not repo.private:
+        logger.critical(
+            f"GitHub repository {repo.full_name} visibility is not private, Salvage will not proceed"
+        )
 
-            exit(1)
+        return
 
-        try:
-            self.gitRepo: Repository = self.gitUser.get_repo(name)
-        except Exception as e:
-            logger.opt(exception=e).critical(
-                f"Failed to fetch GitHub repository {self.gitName}/{name}"
-            )
+    logger.debug(f"Loaded GitHub repository {repo.full_name}")
 
-            exit(1)
+    return repo
 
-        if not self.gitRepo.private:
-            logger.critical(
-                f"GitHub repository {self.gitName}/{name} visibility is not private"
-            )
-            logger.info(
-                "Portainer Stacks can contain sensitive credentials, Salvage will not proceed"
-            )
 
-            exit(1)
+def GetFiles(repo: Repository) -> list[ContentFile]:
+    """
+    Recursively search the provided GitHub repository and return a list
+    containing ContentFile objects for each discovered file.
+    """
 
-        logger.info(f"Loaded GitHub repository {self.gitName}/{name}")
-        logger.debug(Format.GitURL(self, self.gitName, name))
+    files: list[ContentFile] = []
 
-    def GetFile(self: Self, filename: str) -> Tuple[str | None, str | None]:
-        """
-        Fetch the specified file from the configured GitHub repository
-        and return both its contents and blob SHA hash as a Tuple.
+    try:
+        # Ensure contents object is a list of ContentFiles
+        if isinstance(contents := repo.get_contents(""), ContentFile):
+            contents = [contents]
+    except Exception as e:
+        logger.opt(exception=e).error(
+            f"Failed to get files from GitHub repository {repo.full_name}"
+        )
 
-        Return Tuple of Nones if file does not exist.
-        """
+        return files
 
-        try:
-            files: list[ContentFile] = self.gitRepo.get_contents("/")
+    while contents:
+        file: ContentFile = contents.pop(0)
 
-            logger.trace(files)
-        except Exception as e:
-            # Repository is likely empty but we do not have an Exception
-            # specific to this error, so continue on; quietly.
-            logger.opt(exception=e).debug("Failed to fetch files in GitHub repository")
+        if file.type == "dir":
+            try:
+                # Ensure dirContents object is a list of ContentFiles
+                if isinstance(dirContents := repo.get_contents(file.path), ContentFile):
+                    dirContents = [dirContents]
+            except Exception as e:
+                logger.error(
+                    f"Failed to get files from directory {file.name} in GitHub repository {repo.full_name}"
+                )
 
-            return
-
-        for file in files:
-            logger.trace(file)
-
-            if file.name != filename:
                 continue
 
-            content: str = base64.b64decode(file.content).decode("UTF-8")
+            contents.extend(dirContents)
+        else:
+            files.append(file)
 
-            logger.info(f"Fetched file {filename} from GitHub repository")
-            logger.debug(Format.GitURL(self, self.gitName, filename))
-            logger.trace(content)
+    logger.debug(f"Found {len(files):,} files in GitHub repository {repo.full_name}")
 
-            return content, file.sha
+    return files
 
-    def SaveFile(
-        self: Self, filename: str, content: str, exists: bool, sha: str | None = None
-    ) -> None:
-        """
-        Update the specified file in the configured GitHub repository
-        with the provided contents. If file does not exist, create it.
-        """
 
-        try:
-            if exists:
-                self.gitRepo.update_file(filename, f"Update {filename}", content, sha)
-            else:
-                self.gitRepo.create_file(filename, f"Create {filename}", content)
-        except Exception as e:
-            logger.opt(exception=e).error(
-                f"Failed to save file {filename} to GitHub repository"
-            )
+def GetFile(repo: Repository, filename: str) -> ContentFile | None:
+    """
+    Return the ContentFile object with a matching filename from the
+    provided GitHub repository.
+    """
 
-            return
+    files: list[ContentFile] = GetFiles(repo)
 
-        logger.success(f"Saved file {filename} to GitHub repository")
+    for file in files:
+        if file.name != filename:
+            logger.trace(f"Skipping file {file.name}, filename is not {filename}")
+
+            continue
+
+        logger.debug(f"Fetched file {filename} from GitHub repository {repo.full_name}")
+
+        return file
+
+
+def SaveFile(
+    repo: Repository, filepath: str, content: str, sha: str | None = None
+) -> str | None:
+    """
+    Modify the specified file in the configured GitHub repository
+    with the provided contents. If file does not exist, create it.
+
+    Return the commit URL for the file if successful.
+    """
+
+    result: dict[str, ContentFile | Commit] | None = None
+
+    try:
+        if sha:
+            result = repo.update_file(filepath, f"Update {filepath}", content, sha)
+        else:
+            result = repo.create_file(filepath, f"Create {filepath}", content)
+    except Exception as e:
+        logger.opt(exception=e).error(
+            f"Failed to save file {filepath} to GitHub repository {repo.full_name}"
+        )
+
+        return
+
+    logger.debug(f"Saved file {filepath} to GitHub repository {repo.full_name}")
+
+    if (result) and (isinstance(result["commit"], Commit)):
+        return result["commit"].html_url
+
+
+def DeleteFile(repo: Repository, filepath: str, sha: str) -> str | None:
+    """
+    Delete the specified file in the configured GitHub repository.
+
+    Return the commit URL for the file if successful.
+    """
+
+    result: dict[str, Commit | _NotSetType] | None = None
+
+    try:
+        result = repo.delete_file(filepath, f"Delete {filepath}", sha)
+    except Exception as e:
+        logger.opt(exception=e).error(
+            f"Failed to delete file {filepath} from GitHub repository {repo.full_name}"
+        )
+
+        return
+
+    logger.debug(f"Deleted file {filepath} from GitHub repository {repo.full_name}")
+
+    if (result) and (isinstance(result["commit"], Commit)):
+        return result["commit"].html_url
