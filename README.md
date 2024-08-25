@@ -25,7 +25,7 @@ Regardless of your chosen setup method, Salvage is intended for use with a task 
 
 ### Docker (Recommended)
 
-Modify the following `docker-compose.yaml` example file, then run `docker compose up`.
+Modify the following `compose.yaml` example file, then run `docker compose up`.
 
 ```yaml
 services:
