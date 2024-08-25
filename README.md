@@ -1,6 +1,6 @@
 # Salvage
 
-![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/EthanC/Salvage/ci.yml?branch=main) ![Docker Pulls](https://img.shields.io/docker/pulls/ethanchrisp/salvage?label=Docker%20Pulls) ![Docker Image Size (tag)](https://img.shields.io/docker/image-size/ethanchrisp/salvage/latest?label=Docker%20Image%20Size)
+![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/EthanC/Salvage/ci.yaml?branch=main) ![Docker Pulls](https://img.shields.io/docker/pulls/ethanchrisp/salvage?label=Docker%20Pulls) ![Docker Image Size (tag)](https://img.shields.io/docker/image-size/ethanchrisp/salvage/latest?label=Docker%20Image%20Size)
 
 Salvage backs up Docker Compose files to GitHub and notifies about changes.
 
@@ -47,7 +47,7 @@ services:
 
 Salvage is built for [Python 3.12](https://www.python.org/) or greater.
 
-1. Install required dependencies using [Poetry](https://python-poetry.org/): `poetry install --no-root`
+1. Install required dependencies using [uv](https://github.com/astral-sh/uv): `uv sync`
 2. Rename `.env.example` to `.env`, then provide the environment variables.
 3. Ensure the /stacks directory contains Docker Compose files.
 4. Start Salvage: `python salvage.py`
