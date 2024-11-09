@@ -22,6 +22,7 @@ Regardless of your chosen setup method, Salvage is intended for use with a task 
 -   `GITHUB_ACCESS_TOKEN` (Required): [Personal Access Token (Classic)](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#personal-access-tokens-classic) for GitHub.
 -   `GITHUB_REPOSITORY` (Required): Name of the private GitHub repository to store backups.
 -   `DISCORD_WEBHOOK_URL`: [Discord Webhook](https://support.discord.com/hc/en-us/articles/228383668-Intro-to-Webhooks) URL to receive Portainer Stack notifications.
+-   `GLOB_PATTERNS`: Comma-separated [pathname pattern(s)](https://docs.python.org/3/library/glob.html) to match in local file discovery. Default is `**/compose.yaml`.
 
 ### Docker (Recommended)
 
@@ -39,6 +40,7 @@ services:
       GITHUB_ACCESS_TOKEN: XXXXXXXX
       GITHUB_REPOSITORY: XXXXXXXX
       DISCORD_WEBHOOK_URL: https://discord.com/api/webhooks/XXXXXXXX/XXXXXXXX
+      GLOB_PATTERNS: **/compose.yaml,**/config.json
     volumes:
       - /home/username/stacks:/salvage/stacks:ro
 ```

@@ -28,7 +28,7 @@ def Start() -> None:
 
     if dotenv.load_dotenv():
         logger.success("Loaded environment variables")
-        logger.trace(environ)
+        logger.trace(f"{environ=}")
 
     if level := environ.get("LOG_LEVEL"):
         logger.remove()
@@ -44,7 +44,7 @@ def Start() -> None:
         )
 
         logger.success(f"Enabled logging to Discord webhook")
-        logger.trace(url)
+        logger.trace(f"{url=}")
 
     local: dict[str, dict[str, str]] = GetLocalFiles()
 
@@ -74,61 +74,82 @@ def Start() -> None:
 def GetLocalFiles() -> dict[str, dict[str, str]]:
     """Return a dictionary containing files from the local stacks directory."""
 
-    stacks: dict[str, dict[str, str]] = {}
+    results: dict[str, dict[str, str]] = {}
     directory: Path = Path("./stacks")
 
     if not directory.exists():
         logger.error(f"Failed to locate local stacks directory {directory.resolve()}")
 
-        return stacks
+        return results
 
-    for file in directory.glob("**/compose.yaml"):
-        stack: str = file.relative_to("./stacks").parts[0]
+    # Default pattern if GLOB_PATTERN environment variable is not set
+    patterns: list[str] = ["**/compose.yaml"]
 
-        stacks[stack] = {
-            "stack": stack,
-            "filename": file.name,
-            "filepath": str(file.relative_to("./stacks")).replace("\\", "/"),
-            "content": file.read_text(),
-        }
+    if custom := environ.get("GLOB_PATTERNS"):
+        patterns = custom.split(",")
 
-        logger.debug(f"Found file {stacks[stack]["filepath"]} in local stacks")
-        logger.trace(file.resolve())
-        logger.trace(stacks[stack])
+    logger.trace(f"{patterns=}")
 
-    logger.info(f"Found {len(stacks):,} files in local stacks")
+    for pattern in patterns:
+        logger.trace(f"{pattern=}")
 
-    return stacks
+        for file in directory.glob(pattern):
+            logger.trace(f"{file=}")
+
+            stack: str = file.relative_to("./stacks").parts[0]
+            filename: str = file.name
+
+            results[f"{stack}/{filename}"] = {
+                "stack": stack,
+                "filename": filename,
+                "filepath": str(file).replace("\\", "/"),
+                "content": file.read_text(),
+            }
+
+            logger.debug(
+                f"Found file {results[f"{stack}/{filename}"]["filepath"]} in local stacks"
+            )
+            logger.trace(file.resolve())
+            logger.trace(f"{results[f"{stack}/{filename}"]=}")
+
+    logger.info(f"Found {len(results):,} files in local stacks")
+    logger.trace(f"{results=}")
+
+    return results
 
 
 def GetRemoteFiles(repo: Repository) -> dict[str, dict[str, str]]:
     """Return a dictionary containing files from the remote stacks directory."""
 
-    stacks: dict[str, dict[str, str]] = {}
+    results: dict[str, dict[str, str]] = {}
     files: list[ContentFile] = GetFiles(repo)
 
     for file in files:
-        stack: str = file.path.split("/")[0]
+        logger.trace(f"{file=}")
 
-        stacks[stack] = {
+        stack: str = file.path.split("/")[1]
+        filename: str = file.name
+
+        results[f"{stack}/{filename}"] = {
             "stack": stack,
-            "filename": file.name,
+            "filename": filename,
             "filepath": file.path,
             "content": base64.b64decode(file.content).decode("UTF-8"),
             "sha": file.sha,
         }
 
         logger.debug(
-            f"Found file {stacks[stack]["filepath"]} in GitHub repository {repo.full_name} stacks"
+            f"Found file {results[f"{stack}/{filename}"]["filepath"]} in GitHub repository {repo.full_name} stacks"
         )
-        logger.trace(file.html_url)
-        logger.trace(stacks[stack])
+        logger.trace(f"{file.html_url=}")
+        logger.trace(f"{results[f"{stack}/{filename}"]=}")
 
     logger.info(
-        f"Found {len(stacks):,} files in GitHub repository {repo.full_name} stacks"
+        f"Found {len(results):,} files in GitHub repository {repo.full_name} stacks"
     )
+    logger.trace(f"{results=}")
 
-    return stacks
+    return results
 
 
 def CompareFiles(
@@ -144,9 +165,11 @@ def CompareFiles(
     remote files that are not present locally will be deleted.
     """
 
-    for stack in local:
-        new: dict[str, str] = local[stack]
-        old: dict[str, str] | None = remote.get(stack)
+    for file in local:
+        new: dict[str, str] = local[file]
+        old: dict[str, str] | None = remote.get(file)
+
+        logger.trace(f"{file=} {new=} {old=}")
 
         if not old:
             url: str | None = SaveFile(repo, new["filepath"], new["content"])
@@ -178,19 +201,21 @@ def CompareFiles(
                 f"Modified file {new["filepath"]} in GitHub repository {repo.full_name}"
             )
 
-    for stack in remote:
-        if not local.get(stack):
+    for file in remote:
+        logger.trace(f"{file=}")
+
+        if not local.get(file):
             url: str | None = DeleteFile(
-                repo, remote[stack]["filepath"], remote[stack]["sha"]
+                repo, remote[file]["filepath"], remote[file]["sha"]
             )
 
             if url:
-                remote[stack]["url"] = url
+                remote[file]["url"] = url
 
-                Notify(remote[stack], "Deleted")
+                Notify(remote[file], "Deleted")
 
                 logger.success(
-                    f"Deleted file {remote[stack]["filepath"]} in GitHub repository {repo.full_name}"
+                    f"Deleted file {remote[file]["filepath"]} in GitHub repository {repo.full_name}"
                 )
 
 
