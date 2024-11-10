@@ -132,13 +132,22 @@ def GetRemoteFiles(repo: Repository) -> dict[str, dict[str, str]]:
     for file in files:
         logger.trace(f"{file=}")
 
-        stack: str = file.path.split("/")[1]
+        filepath: str = file.path
         filename: str = file.name
+
+        if not filepath.startswith("stacks/"):
+            logger.debug(
+                f"Skipping remote file path {filepath} due to not being in the stacks folder"
+            )
+
+            continue
+
+        stack: str = file.path.split("/")[1]
 
         results[f"{stack}/{filename}"] = {
             "stack": stack,
             "filename": filename,
-            "filepath": file.path,
+            "filepath": filepath,
             "content": base64.b64decode(file.content).decode("UTF-8"),
             "sha": file.sha,
         }
