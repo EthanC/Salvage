@@ -94,6 +94,11 @@ def GetLocalFiles() -> dict[str, dict[str, str]]:
         logger.trace(f"{pattern=}")
 
         for file in directory.glob(pattern):
+            if file.is_dir():
+                logger.debug(f"Skipping path {file} due to being a directory")
+
+                continue
+
             logger.trace(f"{file=}")
 
             stack: str = file.relative_to("./stacks").parts[0]
