@@ -23,6 +23,7 @@ Regardless of your chosen setup method, Salvage is intended for use with a task 
 -   `GITHUB_REPOSITORY` (Required): Name of the private GitHub repository to store backups.
 -   `DISCORD_WEBHOOK_URL`: [Discord Webhook](https://support.discord.com/hc/en-us/articles/228383668-Intro-to-Webhooks) URL to receive change notifications.
 -   `GLOB_PATTERNS`: Comma-separated [pathname pattern(s)](https://docs.python.org/3/library/glob.html) to match in local file discovery. Default is `**/compose.yaml`.
+-   `PROJECTS_DIRECTORY`: Directory in which projects are stored. Default is `./projects`.
 
 ### Docker (Recommended)
 
@@ -40,9 +41,8 @@ services:
       GITHUB_ACCESS_TOKEN: XXXXXXXX
       GITHUB_REPOSITORY: XXXXXXXX
       DISCORD_WEBHOOK_URL: https://discord.com/api/webhooks/XXXXXXXX/XXXXXXXX
-      GLOB_PATTERNS: **/compose.yaml,**/config.json
     volumes:
-      - /home/username/stacks:/salvage/stacks:ro
+      - /home/username/projects:/salvage/projects:ro
 ```
 
 ### Standalone
@@ -51,5 +51,5 @@ Salvage is built for [Python 3.13](https://www.python.org/) or greater.
 
 1. Install required dependencies using [uv](https://github.com/astral-sh/uv): `uv sync`
 2. Rename `.env.example` to `.env`, then provide the environment variables.
-3. Ensure the /stacks directory contains Docker Compose files.
+3. Ensure the projects directory contains Docker Compose files.
 4. Start Salvage: `python salvage.py`

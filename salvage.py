@@ -3,10 +3,13 @@ import logging
 from datetime import datetime
 from os import environ
 from pathlib import Path
-from sys import exit, stdout
+from sys import stdout
 
 import dotenv
-from discord_webhook import DiscordEmbed, DiscordWebhook
+from discord_webhook import (  # pyright: ignore[reportMissingTypeStubs]
+    DiscordEmbed,
+    DiscordWebhook,
+)
 from github.AuthenticatedUser import AuthenticatedUser
 from github.ContentFile import ContentFile
 from github.Repository import Repository
@@ -72,13 +75,14 @@ def Start() -> None:
 
 
 def GetLocalFiles() -> dict[str, dict[str, str]]:
-    """Return a dictionary containing files from the local stacks directory."""
+    """Return a dictionary containing files from the local projects directory."""
 
     results: dict[str, dict[str, str]] = {}
-    directory: Path = Path("./stacks")
+    directory_name: str = environ.get("PROJECTS_DIRECTORY", "./projects")
+    directory: Path = Path(directory_name)
 
     if not directory.exists():
-        logger.error(f"Failed to locate local stacks directory {directory.resolve()}")
+        logger.error(f"Failed to locate local projects directory {directory_name}")
 
         return results
 
@@ -101,33 +105,38 @@ def GetLocalFiles() -> dict[str, dict[str, str]]:
 
             logger.trace(f"{file=}")
 
-            stack: str = file.relative_to("./stacks").parts[0]
+            project: str = file.relative_to(directory_name).parts[0]
             filename: str = file.name
 
-            results[f"{stack}/{filename}"] = {
-                "stack": stack,
+            results[f"{project}/{filename}"] = {
+                "project": project,
                 "filename": filename,
                 "filepath": str(file).replace("\\", "/"),
                 "content": file.read_text(),
             }
 
             logger.debug(
-                f"Found file {results[f"{stack}/{filename}"]["filepath"]} in local stacks"
+                f"Found file {results[f'{project}/{filename}']['filepath']} in local projects"
             )
             logger.trace(file.resolve())
-            logger.trace(f"{results[f"{stack}/{filename}"]=}")
+            logger.trace(f"{results[f"{project}/{filename}"]=}")
 
-    logger.info(f"Found {len(results):,} files in local stacks")
+    logger.info(f"Found {len(results):,} files in local projects")
     logger.trace(f"{results=}")
 
     return results
 
 
 def GetRemoteFiles(repo: Repository) -> dict[str, dict[str, str]]:
-    """Return a dictionary containing files from the remote stacks directory."""
+    """Return a dictionary containing files from the remote projects directory."""
 
     results: dict[str, dict[str, str]] = {}
     files: list[ContentFile] = GetFiles(repo)
+    projects_directory: str = environ.get("PROJECTS_DIRECTORY", "./projects")
+
+    if projects_directory.startswith("./"):
+        # Remove first two characters from string
+        projects_directory = projects_directory[2:]
 
     for file in files:
         logger.trace(f"{file=}")
@@ -135,17 +144,17 @@ def GetRemoteFiles(repo: Repository) -> dict[str, dict[str, str]]:
         filepath: str = file.path
         filename: str = file.name
 
-        if not filepath.startswith("stacks/"):
+        if not filepath.startswith(projects_directory):
             logger.debug(
-                f"Skipping remote file path {filepath} due to not being in the stacks folder"
+                f"Skipping remote file path {filepath} due to not being in projects directory ({projects_directory})"
             )
 
             continue
 
-        stack: str = file.path.split("/")[1]
+        project: str = file.path.split("/")[1]
 
-        results[f"{stack}/{filename}"] = {
-            "stack": stack,
+        results[f"{project}/{filename}"] = {
+            "project": project,
             "filename": filename,
             "filepath": filepath,
             "content": base64.b64decode(file.content).decode("UTF-8"),
@@ -153,13 +162,13 @@ def GetRemoteFiles(repo: Repository) -> dict[str, dict[str, str]]:
         }
 
         logger.debug(
-            f"Found file {results[f"{stack}/{filename}"]["filepath"]} in GitHub repository {repo.full_name} stacks"
+            f"Found file {results[f'{project}/{filename}']['filepath']} in GitHub repository {repo.full_name} projects"
         )
         logger.trace(f"{file.html_url=}")
-        logger.trace(f"{results[f"{stack}/{filename}"]=}")
+        logger.trace(f"{results[f"{project}/{filename}"]=}")
 
     logger.info(
-        f"Found {len(results):,} files in GitHub repository {repo.full_name} stacks"
+        f"Found {len(results):,} files in GitHub repository {repo.full_name} projects"
     )
     logger.trace(f"{results=}")
 
@@ -172,7 +181,7 @@ def CompareFiles(
     repo: Repository,
 ) -> None:
     """
-    Compare files within the local and remote stack directories.
+    Compare files within the local and remote project directories.
 
     If a local file differs from its remote counterpart, save the file
     to the configured GitHub repository and notify about changes. Any
@@ -194,13 +203,13 @@ def CompareFiles(
                 Notify(new, "Created")
 
                 logger.success(
-                    f"Created file {new["filepath"]} in GitHub repository {repo.full_name}"
+                    f"Created file {new['filepath']} in GitHub repository {repo.full_name}"
                 )
 
             continue
 
         if new["content"] == old["content"]:
-            logger.info(f"Detected no changes to file {new["filepath"]}")
+            logger.info(f"Detected no changes to file {new['filepath']}")
 
             continue
 
@@ -212,7 +221,7 @@ def CompareFiles(
             Notify(new, "Modified")
 
             logger.success(
-                f"Modified file {new["filepath"]} in GitHub repository {repo.full_name}"
+                f"Modified file {new['filepath']} in GitHub repository {repo.full_name}"
             )
 
     for file in remote:
@@ -229,12 +238,12 @@ def CompareFiles(
                 Notify(remote[file], "Deleted")
 
                 logger.success(
-                    f"Deleted file {remote[file]["filepath"]} in GitHub repository {repo.full_name}"
+                    f"Deleted file {remote[file]['filepath']} in GitHub repository {repo.full_name}"
                 )
 
 
-def Notify(stack: dict[str, str], action: str) -> None:
-    """Report stack changes to the configured Discord webhook."""
+def Notify(project: dict[str, str], action: str) -> None:
+    """Report project changes to the configured Discord webhook."""
 
     if not (url := environ.get("DISCORD_WEBHOOK_URL")):
         logger.info("Discord webhook for notifications is not set")
@@ -251,10 +260,10 @@ def Notify(stack: dict[str, str], action: str) -> None:
         icon_url="https://i.imgur.com/YPGC3In.png",
     )
 
-    embed.add_embed_field("Stack", stack["stack"])
-    embed.add_embed_field("Action", f"[{action}]({stack["url"]})")
+    embed.add_embed_field("Project", project["project"])
+    embed.add_embed_field("Action", f"[{action}]({project['url']})")
     embed.add_embed_field("Detected", f"<t:{int(now)}:R>")
-    embed.add_embed_field("File", f"```\n{stack["filepath"]}\n```", inline=False)
+    embed.add_embed_field("File", f"```\n{project['filepath']}\n```", inline=False)
 
     embed.set_footer("Docker", icon_url="https://i.imgur.com/Rb0sSM2.png")  # pyright: ignore [reportUnknownMemberType]
     embed.set_timestamp(now)
@@ -266,4 +275,4 @@ if __name__ == "__main__":
     try:
         Start()
     except KeyboardInterrupt:
-        exit()
+        pass
